@@ -94,7 +94,7 @@ def display_footer():
             st.session_state.faq_visible = False
 
     # About Modal
-    if st.session_state.about_visible:
+    # if st.session_state.about_visible:
         about_modal = st.empty()  # Create a container for the About modal
         about_modal.markdown(f"""
         <div class="modal">
@@ -102,8 +102,8 @@ def display_footer():
                 <span class="close" onclick="document.getElementById('aboutModal').style.display='none'">&times;</span>
                 <h2>About</h2>
                 <p>Made with Streamlit v1.43.2</p>
-                <p><a href="https://streamlit.io" style="color: white;">Streamlit Documentation</a></p>
-                <p>Copyright 2025 Snowflake Inc. All rights reserved.</p>
+                <p><a xyz rps.com rps.rajputt@gmail.com</a></p>
+                <p></p>
                 <p>For any queries, please send an email to <strong>rps.rajputt@gmail.com</strong>.</p>
                 <p>You can also reach out to us at <strong>your_email@example.com</strong> for further assistance.</p>
                 <button onclick="document.getElementById('aboutModal').style.display='none'">Close</button>
