@@ -763,7 +763,7 @@ def main():
                     col1, col2 = st.columns([0.1, 0.9])
                     
                     with col1:
-                        if st.button("Import APIs", type="primary"):
+                        if st.button("Import", type="primary"):
                             if imported_apis:
                                 # Ensure unique names and limit length for all imported APIs
                                 existing_names = [api.get('name', '') for api in st.session_state.apis]
