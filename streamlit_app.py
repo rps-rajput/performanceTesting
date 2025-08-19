@@ -1417,7 +1417,7 @@ def main():
         st.header("Generate Report")
 
         st.markdown(
-            "Interactive web-based report with detailed metrics and charts")
+            "Interactive web-based reports with detailed metrics and charts")
 
         # Create a row for buttons at the bottom
         report_col1, report_col2 = st.columns(2)
@@ -1450,7 +1450,7 @@ def main():
             ):  # Make button full width of column
                 reset_all_data()
 
-    # Display the footer
+    # Display the footer d
 #display_footer()
 
 def update_api_name(idx):
