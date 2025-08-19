@@ -15,8 +15,6 @@ from faq import display_faq  # Import the FAQ display function
 from footer import display_footer  # Import the footer display function
 from streamlit import session_state as st_session  # Import session state for managing modal visibility
 
-from streamlit_sortables import sort_items
-
 # Function to format dataframes with consistent decimal places
 def format_dataframe(df):
     """Format a dataframe to ensure all numeric values have consistent decimal places."""
