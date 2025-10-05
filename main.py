@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from utils.api_tester import APITester
 from utils.report_generator import ReportGenerator
+from utils.url_performance_tester import URLPerformanceTester
 import plotly.graph_objects as go
 import plotly.express as px
 import base64
@@ -14,6 +15,7 @@ import time  # Import time for simulating the test duration
 from faq import display_faq  # Import the FAQ display function
 from footer import display_footer  # Import the footer display function
 from streamlit import session_state as st_session  # Import session state for managing modal visibility
+import streamlit.components.v1 as components
 
 # Function to format dataframes with consistent decimal places
 def format_dataframe(df):
@@ -584,34 +586,61 @@ def main():
     # Initialize form defaults
     clear_form()
 
+    # Lock only the Test Input Mode radio while tests run
+    if 'input_mode_locked' not in st.session_state:
+        st.session_state.input_mode_locked = False
+    if 'current_test_mode' not in st.session_state:
+        st.session_state.current_test_mode = "Manual Entry"
+    # Apply any forced mode changes BEFORE rendering the radio widget
+    if 'force_mode' not in st.session_state:
+        st.session_state.force_mode = None
+    if st.session_state.force_mode:
+        st.session_state.current_test_mode = st.session_state.force_mode
+        st.session_state.force_mode = None
+
     with st.sidebar:
         st.header("Test Configuration")
-        test_mode = st.radio("Test Input Mode",
-                             ["Manual Entry", "File Upload"])
+        st.radio(
+            "Test Input Mode",
+            ["Manual Entry", "File Upload", "URL Performance Test"],
+            disabled=st.session_state.input_mode_locked,
+            help=("Test is running, please wait to finish" if st.session_state.input_mode_locked else None),
+            key="current_test_mode"
+        )
+        # Use the session state value consistently across reruns, including when disabled
+        test_mode = st.session_state.current_test_mode
 
-        # Test configuration
-        virtual_users = st.number_input("Virtual Users", min_value=1, value=10)
-        ramp_up_time = st.number_input("Ramp-up Time (seconds)",
-                                       min_value=1,
-                                       value=5)
+        # Test configuration (only show for API tests, not URL Performance)
+        if test_mode in ["Manual Entry", "File Upload"]:
+            virtual_users = st.number_input("Virtual Users", min_value=1, value=10)
+            ramp_up_time = st.number_input("Ramp-up Time (seconds)",
+                                           min_value=1,
+                                           value=5)
 
-        # Authentication section in sidebar
-        st.header("Authorization")
-        auth_type = st.selectbox("Auth Type",
-                                 ["No Auth", "Bearer Token", "Basic Auth"])
-        auth_details = {}
+            # Authentication section in sidebar
+            st.header("Authorization")
+            auth_type = st.selectbox("Auth Type",
+                                     ["No Auth", "Bearer Token", "Basic Auth"])
+            auth_details = {}
 
-        if auth_type == "Bearer Token":
-            auth_token = st.text_input("Bearer Token", type="password")
-            if auth_token:
-                auth_details = {"Authorization": f"Bearer {auth_token}"}
-        elif auth_type == "Basic Auth":
-            username = st.text_input("Username")
-            password = st.text_input("Password", type="password")
-            if username and password:
-                credentials = base64.b64encode(
-                    f"{username}:{password}".encode()).decode()
-                auth_details = {"Authorization": f"Basic {credentials}"}
+            if auth_type == "Bearer Token":
+                auth_token = st.text_input("Bearer Token", type="password")
+                if auth_token:
+                    auth_details = {"Authorization": f"Bearer {auth_token}"}
+            elif auth_type == "Basic Auth":
+                username = st.text_input("Username")
+                password = st.text_input("Password", type="password")
+                if username and password:
+                    credentials = base64.b64encode(
+                        f"{username}:{password}".encode()).decode()
+                    auth_details = {"Authorization": f"Basic {credentials}"}
+        else:
+            # For URL Performance Test, set default values (not used but needed for compatibility)
+            virtual_users = 10
+            ramp_up_time = 5
+            auth_details = {}
+
+    # Keep both results in session; visibility is controlled purely by current mode
 
     if test_mode == "Manual Entry":
         st.subheader("Add API")
@@ -688,7 +717,7 @@ def main():
                     f"API added successfully! Total APIs: {len(st.session_state.apis)}"
                 )
 
-    else:  # File Upload
+    elif test_mode == "File Upload":  # File Upload
         st.subheader("Upload API Collection")
         collection_format = st.radio(
             "Collection Format",
@@ -808,8 +837,140 @@ def main():
                 st.error(f"Error importing file: {str(e)}")
                 st.exception(e)
 
-    # Display configured APIs with elegant reordering capabilities
-    if st.session_state.apis:
+    # URL Performance Test
+    elif test_mode == "URL Performance Test":  # URL Performance Test
+        st.subheader("URL Performance Test")
+        
+        # Radio buttons for single or multiple URLs
+        url_mode = st.radio(
+            "Select URL Input Mode",
+            ["Single URL", "Multiple URLs"],
+            horizontal=True
+        )
+        
+        if url_mode == "Single URL":
+            # Single URL input field
+            url = st.text_input(
+                "Enter URL",
+                placeholder="https://example.com/api/endpoint",
+                help="Enter a single URL to test its performance"
+            )
+        else:
+            # Multiple URLs input field
+            urls_text = st.text_area(
+                "Enter Multiple URLs",
+                placeholder='Enter URLs separated by commas and enclosed in double quotes:\n"https://example.com/api/endpoint1", "https://example.com/api/endpoint2", "https://example.com/api/endpoint3"',
+                height=120,
+                help="Enter multiple URLs separated by commas and enclosed in double quotes"
+            )
+        
+        # Start URL Performance Test button (only enabled when input present)
+        if st.button("Start URL Performance Test", type="primary", disabled=(not url.strip() if url_mode == "Single URL" else not urls_text.strip())):
+            # Phase 1: lock and schedule the run, then rerun immediately to prevent clicks
+            st.session_state.input_mode_locked = True
+            if url_mode == "Single URL" and url.strip():
+                st.session_state.pending_run = {"type": "url_single", "url": url.strip()}
+                st.session_state.force_mode = "URL Performance Test"
+            elif url_mode == "Multiple URLs" and urls_text.strip():
+                st.session_state.pending_run = {"type": "url_multi", "urls_text": urls_text}
+                st.session_state.force_mode = "URL Performance Test"
+            else:
+                st.error("Please enter valid URL(s)")
+                st.session_state.input_mode_locked = False
+            st.rerun()
+
+    # Execute any pending runs (ensures lock happens before long work) and then display results
+    if 'pending_run' in st.session_state and st.session_state.pending_run:
+        job = st.session_state.pending_run
+        try:
+            if job.get('type') == 'url_single':
+                with st.spinner("Running URL performance test..."):
+                    tester = URLPerformanceTester()
+                    result = tester.test_single_url(job.get('url', ''))
+                    st.session_state.url_test_results = [result]
+                    st.session_state.url_test_mode = "single"
+                    st.session_state.url_tester = tester
+            elif job.get('type') == 'url_multi':
+                with st.spinner("Running URL performance tests for multiple URLs..."):
+                    tester = URLPerformanceTester()
+                    results = tester.test_multiple_urls(job.get('urls_text', ''))
+                    st.session_state.url_test_results = results
+                    st.session_state.url_test_mode = "multiple"
+                    st.session_state.url_tester = tester
+            elif job.get('type') == 'api':
+                loading_html = """
+                <div class="loading-animation">
+                    <img src="https://example.com/loading-icon.gif" alt="Loading...">
+                </div>
+                """
+                st.markdown(loading_html, unsafe_allow_html=True)
+                with st.spinner("Running performance test..."):
+                    time.sleep(5)
+                    tester = APITester(st.session_state.apis, virtual_users, ramp_up_time)
+                    st.session_state.test_results = tester.run_test()
+                    st.session_state.test_config = {
+                        'virtual_users': virtual_users,
+                        'ramp_up_time': ramp_up_time
+                    }
+                st.markdown("<style>.loading-animation { display: none; }</style>", unsafe_allow_html=True)
+        finally:
+            st.session_state.pending_run = None
+            st.session_state.input_mode_locked = False
+            # Rerun once more so the Test Input Mode radio reflects unlocked state
+            st.rerun()
+
+    # Display URL Performance Test Results (only when URL mode is active and selected)
+    if (
+        test_mode == "URL Performance Test" and 
+        'url_test_results' in st.session_state and 
+        st.session_state.url_test_results
+    ):
+        st.markdown("---")
+        st.header("URL Performance Test Results")
+        
+        results = st.session_state.url_test_results
+        tester = st.session_state.url_tester
+        test_mode = st.session_state.url_test_mode
+        
+        # Show exact Lighthouse report(s) in-app
+        html_report = tester.generate_html_report(results, test_mode)
+        if not html_report:
+            st.error("No Lighthouse HTML content available. Please ensure Lighthouse ran successfully.")
+        else:
+            # Render tall enough to show full Lighthouse UI; iframe adjusts for multiple URLs wrapper
+            components.html(html_report, height=1800, scrolling=True)
+        
+        # Footer actions (match File Upload footer style)
+        st.markdown("---")
+        st.header("Generate Report")
+        st.markdown("Interactive web-based report with detailed metrics and charts")
+        report_col1, report_col2 = st.columns(2)
+        with report_col1:
+            st.download_button(
+                label="Generate Report",
+                data=html_report,
+                file_name=f"url_performance_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.html",
+                mime="text/html",
+                help="Download comprehensive HTML performance report",
+                type="primary",
+                use_container_width=True
+            )
+        with report_col2:
+            if st.button("🗑️ Clear All", type="secondary", use_container_width=True):
+                # Clean up tester resources
+                if 'url_tester' in st.session_state:
+                    st.session_state.url_tester.cleanup()
+                
+                # Clear session state
+                del st.session_state.url_test_results
+                del st.session_state.url_test_mode
+                del st.session_state.url_tester
+                
+                st.success("URL test results cleared!")
+                st.rerun()
+
+    # Display configured APIs only outside URL Performance Test mode, and only when not in URL mode
+    if st.session_state.apis and test_mode in ["Manual Entry", "File Upload"]:
         st.subheader("Configured APIs")
         
         # Create a visually appealing container for all APIs
@@ -935,35 +1096,19 @@ def main():
                         st.rerun()
 
     # Add a button to start the performance test
-    if st.button("Start Performance Test",
+    if test_mode in ["Manual Entry", "File Upload"] and st.button("Start Performance Test",
                  type="primary",
                  disabled=len(st.session_state.apis) == 0):
-        # Show loading animation
-        loading_html = """
-        <div class="loading-animation">
-            <img src="https://example.com/loading-icon.gif" alt="Loading...">
-        </div>
-        """
-        st.markdown(loading_html, unsafe_allow_html=True)
-
-        with st.spinner("Running performance test..."):
-            # Simulate a long-running process (replace this with your actual test logic)
-            time.sleep(5)  # Simulate a delay for the performance test
-            
-            # Store test results in session state
-            tester = APITester(st.session_state.apis, virtual_users, ramp_up_time)
-            st.session_state.test_results = tester.run_test()
-            st.session_state.test_config = {
-                'virtual_users': virtual_users,
-                'ramp_up_time': ramp_up_time
-            }
-            st.success("Performance test completed!")
-
-        # Hide loading animation
-        st.markdown("<style>.loading-animation { display: none; }</style>", unsafe_allow_html=True)
+        # Phase 1: lock and schedule API run, rerun immediately
+        st.session_state.input_mode_locked = True
+        st.session_state.pending_run = {"type": "api"}
+        # Keep mode as-is (Manual or File Upload)
+        st.session_state.force_mode = test_mode
+        st.rerun()
 
     # Display results if available
-    if 'test_results' in st.session_state:
+    # Show API performance results only in Manual/File modes
+    if 'test_results' in st.session_state and test_mode in ["Manual Entry", "File Upload"]:
         results = st.session_state.test_results
         virtual_users = st.session_state.test_config['virtual_users']
         ramp_up_time = st.session_state.test_config['ramp_up_time']
