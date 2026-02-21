@@ -1,6 +1,8 @@
 import subprocess
 import os
 import shutil
+import sys
+import tempfile
 from datetime import datetime
 from typing import List, Dict, Any
 
@@ -14,8 +16,8 @@ class URLPerformanceTester:
     """
     
     def __init__(self):
-        # Use the exact output directory requested
-        self.output_dir = "/Users/ravi/Desktop/pdf"
+        # Use a temp dir so it works on Render and other hosts (no hardcoded paths)
+        self.output_dir = os.environ.get("LIGHTHOUSE_OUTPUT_DIR") or tempfile.mkdtemp(prefix="perftestpro_lh_")
         os.makedirs(self.output_dir, exist_ok=True)
         self.temp_items: List[str] = []
     
@@ -25,18 +27,32 @@ class URLPerformanceTester:
             return True
         except Exception:
             return False
+
+    def _chrome_needs_server_flags(self) -> bool:
+        """True when running in Docker, Render, or a Linux server (e.g. Oracle Cloud) without a display."""
+        if os.environ.get("RENDER") or os.path.exists("/.dockerenv"):
+            return True
+        if os.environ.get("PERFTESTPRO_HEADLESS") == "1":
+            return True
+        if os.name != "posix":
+            return False
+        if sys.platform == "darwin":
+            return False
+        return not os.environ.get("DISPLAY")
     
     def _run_lighthouse_exact(self, url: str, index: int) -> Dict[str, Any]:
         """Run Lighthouse with the exact flags provided and return file paths for HTML/JSON outputs."""
         base_path = os.path.join(self.output_dir, f"report-{index}")
+        chrome_flags = "--headless"
+        if self._chrome_needs_server_flags():
+            chrome_flags += " --no-sandbox --disable-dev-shm-usage --disable-gpu --disable-setuid-sandbox"
         cmd = [
             "lighthouse",
             url,
             "--output", "html",
             "--output", "json",
-            # Use prefix (no extension) so LH writes both .html and .json with same base
             "--output-path", f"{base_path}",
-            "--chrome-flags=--headless",
+            f"--chrome-flags={chrome_flags}",
             "--preset=desktop",
         ]
         subprocess.run(cmd, check=True)

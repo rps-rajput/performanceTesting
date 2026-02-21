@@ -1,0 +1,23 @@
+# Example systemd unit for PerfTestpro on Oracle Cloud (or any Linux server).
+# 1. Copy to systemd: sudo cp scripts/perftestpro.service.example /etc/systemd/system/perftestpro.service
+# 2. Edit paths: replace /home/ubuntu/perftestpro and ubuntu with your app path and user.
+# 3. Enable and start: sudo systemctl daemon-reload && sudo systemctl enable perftestpro && sudo systemctl start perftestpro
+# 4. Check: sudo systemctl status perftestpro
+
+[Unit]
+Description=PerfTestpro Streamlit App
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/perftestpro
+Environment="PATH=/home/ubuntu/perftestpro/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="PORT=8501"
+ExecStart=/home/ubuntu/perftestpro/venv/bin/streamlit run streamlit_app.py --server.port=8501 --server.address=0.0.0.0
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
