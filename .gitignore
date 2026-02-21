@@ -59,3 +59,10 @@ attached_assets/
 
 #utility
 utils/
+
+# Mac
+.DS_Store
+
+# Python
+__pycache__/
+*.pyc
