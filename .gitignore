@@ -56,3 +56,6 @@ package-lock.json
 
 # Attachments (optional - you may want to keep some)
 attached_assets/
+
+#utility
+utils/
