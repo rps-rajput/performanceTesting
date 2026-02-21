@@ -70,8 +70,8 @@ class ReportGenerator:
             text=error_rates.values * 100  # Show percentage on bars
         )
         fig.update_traces(
-            marker_color="#FF6B6B",
-            marker_line_color="#E74C3C",
+            marker_color="#6C47E5",
+            marker_line_color="#6C47E5",
             texttemplate='%{text:.1f}%',  # Ensure only 1 decimal place
             textposition='outside'
         )
@@ -338,7 +338,7 @@ class ReportGenerator:
                 def format_avg_response_time(value):
                     if pd.notnull(value):
                         if value > 10000:
-                            return f'<span style="color:#E74C3C; font-weight:bold;">{value:.1f}</span>'
+                            return f'<span style="color:#6C47E5; font-weight:bold;">{value:.1f}</span>'
                         else:
                             return f"{value:.1f}"
                     return value
@@ -350,7 +350,7 @@ class ReportGenerator:
             if 'Error Message' in formatted_df.columns:
                 def format_error_message(value):
                     if pd.notnull(value) and value != '':
-                        return f'<span style="color:#E74C3C; font-weight:bold;">{value}</span>'
+                        return f'<span style="color:#6C47E5; font-weight:bold;">{value}</span>'
                     return value
                 
                 # Apply the formatter to error messages
