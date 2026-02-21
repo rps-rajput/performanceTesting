@@ -100,20 +100,20 @@
 
         /* Error message styling */
         .error-message {
-            color: #E74C3C !important;
+            color: #6C47E5 !important;
             font-weight: bold !important;
         }
 
         /* Ensure error messages display correctly in all contexts */
         table td .error-message,
         table td.error-message {
-            color: #E74C3C !important;
+            color: #6C47E5 !important;
             font-weight: bold !important;
         }
         
         /* High response time styling (over 10 seconds) */
         table td.high-response-time {
-            color: #E74C3C !important;
+            color: #6C47E5 !important;
             font-weight: bold !important;
         }
         
@@ -122,7 +122,7 @@
         td:has(> span:contains("Invalid token")),
         td:contains("Token is required"),
         td:contains("Invalid token") {
-            color: #E74C3C !important;
+            color: #6C47E5 !important;
             font-weight: bold !important;
         }
         
@@ -137,7 +137,7 @@
         
         /* Explicitly target Avg Response Time values over 10000 */
         .avg-response-time-high {
-            color: #E74C3C !important;
+            color: #6C47E5 !important;
             font-weight: bold !important;
         }
     </style>
@@ -248,7 +248,7 @@
                                 
                                 // Only highlight if value > 10000 (10 seconds)
                                 if (!isNaN(numericValue) && numericValue > 10000) {
-                                    avgResponseCell.style.color = '#E74C3C';
+                                    avgResponseCell.style.color = '#6C47E5';
                                     avgResponseCell.style.fontWeight = 'bold';
                                     avgResponseCell.classList.add('avg-response-time-high');
                                 }
@@ -283,7 +283,7 @@
                                 const errorText = errorCell.textContent.trim();
                                 
                                 if (errorText && errorText !== 'No message' && errorText !== 'None') {
-                                    errorCell.style.color = '#E74C3C';
+                                    errorCell.style.color = '#6C47E5';
                                     errorCell.style.fontWeight = 'bold';
                                     errorCell.classList.add('error-message');
                                 }

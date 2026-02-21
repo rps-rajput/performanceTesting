@@ -1,5 +1,6 @@
 import streamlit as st
 import json
+import os
 import pandas as pd
 import numpy as np
 from utils.api_tester import APITester
@@ -38,11 +39,61 @@ def format_dataframe(df):
     
     return formatted_df
 
-st.set_page_config(page_title="API Performance Tester", layout="wide")
+st.set_page_config(page_title="API Performance Tester", page_icon="public/favicon.png", layout="wide", initial_sidebar_state="expanded")
+
+# Logo in header: fixed at top with 8px padding from top
+_script_dir = os.path.dirname(os.path.abspath(__file__))
+_logo_path = os.path.join(_script_dir, "public", "logo.png")
+if os.path.isfile(_logo_path):
+    with open(_logo_path, "rb") as _f:
+        _logo_b64 = base64.b64encode(_f.read()).decode()
+    st.markdown(f"""
+    <style>
+    .app-logo-header {{
+        position: fixed !important;
+        top: 8px !important;
+        left: 12px !important;
+        z-index: 999999 !important;
+        height: 4.5rem !important;
+        display: flex !important;
+        align-items: center !important;
+        pointer-events: none !important;
+    }}
+    .app-logo-header img {{
+        height: 100% !important;
+        width: auto !important;
+        object-fit: contain !important;
+    }}
+    </style>
+    <div class="app-logo-header">
+        <img src="data:image/png;base64,{_logo_b64}" alt="PerfTestPro by Ruviq" />
+    </div>
+    """, unsafe_allow_html=True)
 
 # Custom CSS for the clear button positioning and loading animation
 st.markdown("""
 <style>
+    /* Main content: no top padding so "Performance Testing Tool" sits at top */
+    div[data-testid="stMainBlockContainer"],
+    .block-container {
+        padding-top: 0 !important;
+    }
+
+    /* Sidebar: minimal gap at top for content */
+    section[data-testid="stSidebar"] > div:first-child {
+        padding-top: 0.25rem !important;
+    }
+
+    /* Sidebar: static – hide collapse/toggle button so users cannot close it */
+    [data-testid="collapsedControl"] { display: none !important; }
+    section[data-testid="stSidebar"] button[aria-label*="Close"],
+    section[data-testid="stSidebar"] button[aria-label*="collapse"],
+    section[data-testid="stSidebar"] button[aria-label*="Collapse"],
+    section[data-testid="stSidebar"] ~ div button[aria-label*="Close"],
+    section[data-testid="stSidebar"] ~ div button[aria-label*="collapse"],
+    [data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"],
+    button[data-testid="stSidebarCollapseButton"] { display: none !important; }
+
     .clear-button {
         position: fixed;
         right: 80px;
@@ -52,24 +103,24 @@ st.markdown("""
     
     /* Hide default streamlit button styling */
     .clear-button button {
-        color: #ff4b4b !important;
-        border: 1px solid #ff4b4b !important;
+        color: #6C47E5 !important;
+        border: 1px solid #6C47E5 !important;
     }
     
     .clear-button button:hover {
         color: white !important;
-        background-color: #ff4b4b !important;
+        background-color: #6C47E5 !important;
     }
 
     /* Styling for the clear imported APIs button */
     div[data-testid="stButton"] button[kind="secondary"][data-testid="baseButton-secondary"]:contains("Clear Imported APIs") {
-        color: #ff4b4b !important;
-        border: 1px solid #ff4b4b !important;
+        color: #6C47E5 !important;
+        border: 1px solid #6C47E5 !important;
     }
     
     div[data-testid="stButton"] button[kind="secondary"][data-testid="baseButton-secondary"]:contains("Clear Imported APIs"):hover {
         color: white !important;
-        background-color: #ff4b4b !important;
+        background-color: #6C47E5 !important;
     }
 
     /* Styling for the clear imported APIs button with icon */
@@ -183,7 +234,7 @@ st.markdown("""
         line-height: 1 !important;
         background-color: transparent !important;
         border: none !important;
-        color: #4d96ff !important; /* Blue color for the move icon */
+        color: #6C47E5 !important; /* Blue color for the move icon */
         font-size: 20px !important; /* Larger icon size */
         display: flex !important;
         align-items: center !important;
@@ -191,8 +242,8 @@ st.markdown("""
     }
 
     .move-button button:hover {
-        background-color: rgba(77, 150, 255, 0.1) !important; /* Light blue background on hover */
-        color: #4d96ff !important;
+        background-color: rgba(108, 71, 229, 0.15) !important; /* Light blue background on hover */
+        color: #6C47E5 !important;
     }
     
     /* Custom styling for the edit button */
@@ -223,7 +274,7 @@ st.markdown("""
         height: 32px !important;
         border: none !important;
         background-color: transparent !important;
-        color: #4d96ff !important; /* Blue color for the move icon */
+        color: #6C47E5 !important; /* Blue color for the move icon */
         font-size: 18px !important;
         display: flex !important;
         align-items: center !important;
@@ -232,8 +283,8 @@ st.markdown("""
     }
 
     div[data-testid="stButton"] > button[kind="secondary"].move-btn:hover {
-        background-color: rgba(77, 150, 255, 0.1) !important; /* Light blue background on hover */
-        color: #4d96ff !important;
+        background-color: rgba(108, 71, 229, 0.15) !important; /* Light blue background on hover */
+        color: #6C47E5 !important;
     }
     
     /* Basic styling for move button with key starting with move_btn_ */
@@ -248,7 +299,7 @@ st.markdown("""
         border: 1px solid rgba(70, 70, 70, 0.2) !important;
         border-radius: 4px !important;
         background-color: rgba(50, 50, 50, 0.1) !important;
-        color: #4d96ff !important;
+        color: #6C47E5 !important;
         display: flex !important;
         align-items: center !important;
         justify-content: center !important;
@@ -256,7 +307,7 @@ st.markdown("""
     
     div[data-testid="stButton"] button[data-testid="baseButton-secondary"][key^="move_btn_"]:hover {
         background-color: rgba(70, 70, 70, 0.3) !important;
-        border-color: rgba(77, 150, 255, 0.3) !important;
+        border-color: rgba(108, 71, 229, 0.4) !important;
     }
 
     /* Remove margin from number input */
@@ -852,14 +903,14 @@ def main():
             # Single URL input field
             url = st.text_input(
                 "Enter URL",
-                placeholder="https://example.com/api/endpoint",
+                placeholder="https://www.example.com",
                 help="Enter a single URL to test its performance"
             )
         else:
             # Multiple URLs input field
             urls_text = st.text_area(
                 "Enter Multiple URLs",
-                placeholder='Enter URLs separated by commas and enclosed in double quotes:\n"https://example.com/api/endpoint1", "https://example.com/api/endpoint2", "https://example.com/api/endpoint3"',
+                placeholder='Enter URLs separated by commas and enclosed in double quotes:\n"https://www.example.com", "https://www.example.com/page2", "https://www.example.com/page3"',
                 height=120,
                 help="Enter multiple URLs separated by commas and enclosed in double quotes"
             )
@@ -1241,7 +1292,7 @@ def main():
         st.markdown("""
         <style>
         .error-message {
-            color: #E74C3C;
+            color: #6C47E5;
         }
         </style>
         """,
@@ -1308,7 +1359,7 @@ def main():
         # Create a styling function to highlight response times > 10 seconds (10000ms) in red
         # and format all time values to 1 decimal place
         def highlight_high_response_times(val):
-            attr = 'color: red; font-weight: bold' 
+            attr = 'color: #6C47E5; font-weight: bold' 
             is_high = pd.Series(False, index=val.index)
             
             # Apply red color ONLY to Avg Response Time > 10000ms (10 seconds)
@@ -1345,13 +1396,13 @@ def main():
         <style>
         /* Styling for error messages */
         .error-message {
-            color: #E74C3C !important;
+            color: #6C47E5 !important;
             font-weight: bold;
         }
         
         /* Make sure the style applies to Streamlit elements */
         .stDataFrame td.error-message {
-            color: #E74C3C !important;
+            color: #6C47E5 !important;
             font-weight: bold;
         }
         
@@ -1436,7 +1487,7 @@ def main():
             
             # Create a styling function to highlight error messages in red and high response times
             def highlight_errors_and_times(val):
-                attr = 'color: red; font-weight: bold'
+                attr = 'color: #6C47E5; font-weight: bold'
                 is_highlighted = pd.Series(False, index=val.index)
                 
                 # Highlight error messages - check if it's a string and not empty
@@ -1528,7 +1579,7 @@ def main():
             
             # Create a styling function to highlight high response times
             def highlight_response_times(val):
-                attr = 'color: red; font-weight: bold'
+                attr = 'color: #6C47E5; font-weight: bold'
                 is_highlighted = pd.Series(False, index=val.index)
                 
                 # Highlight only Avg Response Time if > 10 seconds (10000ms)

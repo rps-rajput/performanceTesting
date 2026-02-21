@@ -158,8 +158,8 @@ class URLPerformanceTester:
   <style>
     body {{ margin:0; background:#0e1117; color:#eee; }}
     .nav {{ position:sticky; top:0; background:#111; padding:10px; z-index:10 }}
-    .nav button {{ background:#333; color:#fff; border:1px solid #444; padding:6px 10px; cursor:pointer; margin-right:6px; }}
-    .nav button:hover {{ background:#444; }}
+    .nav button {{ background:#333; color:#fff; border:1px solid #6C47E5; padding:6px 10px; cursor:pointer; margin-right:6px; }}
+    .nav button:hover {{ background:#6C47E5; }}
   </style>
   <script>
     function showF(i) {{
