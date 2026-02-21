@@ -1,0 +1,16 @@
+# Render Blueprint: PerfTestpro
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: perftestpro
+    runtime: python
+    region: oregon
+
+    # Build
+    buildCommand: pip install -r requirements.txt
+
+    # Start: Streamlit must listen on PORT and 0.0.0.0 for Render
+    startCommand: streamlit run streamlit_app.py --server.port=$PORT --server.address=0.0.0.0
+
+    # Optional: increase if you use URL Performance (Lighthouse) and use a Docker image
+    # plan: starter
