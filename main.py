@@ -600,6 +600,54 @@ def parse_blazmeter_json(blazmeter_data):
     return apis
 
 
+def parse_perftestpro_json(data):
+    """
+    Parse PerfTestPro JSON format (session export with 'requests' array).
+    Each request has: url, method, requestHeaders (object), requestBody (string or null).
+    Returns a list of APIs in the format expected by the app.
+    """
+    apis = []
+    if not isinstance(data, dict) or "requests" not in data:
+        st.error("Invalid PerfTestPro JSON format. The 'requests' key is missing.")
+        return []
+
+    for i, req in enumerate(data.get("requests", [])):
+        url = req.get("url", "")
+        method = req.get("method", "GET")
+        name = f"API {i + 1}"
+
+        # requestHeaders is an object: { "Accept": "...", "Authorization": "..." }
+        headers = {}
+        req_headers = req.get("requestHeaders") or {}
+        if isinstance(req_headers, dict):
+            for k, v in req_headers.items():
+                if k and v is not None and str(v).strip():
+                    headers[k] = str(v).strip()
+
+        # requestBody can be null or a JSON string
+        body = {}
+        req_body = req.get("requestBody")
+        if req_body:
+            if isinstance(req_body, str):
+                try:
+                    body = json.loads(req_body)
+                except json.JSONDecodeError:
+                    body = {"raw": req_body}
+            elif isinstance(req_body, dict):
+                body = req_body
+
+        name = name[:30]
+        apis.append({
+            "name": name,
+            "method": method,
+            "url": url,
+            "headers": headers,
+            "body": body,
+        })
+
+    return apis
+
+
 def get_successful_apis(df):
     """
     Filter a dataframe to include only APIs that were successful (status code < 400) for all requests.
@@ -772,12 +820,17 @@ def main():
         st.subheader("Upload API Collection")
         collection_format = st.radio(
             "Collection Format",
-            ["Postman Collection", "BlazMeter JSON"],
+            ["Postman Collection", "BlazMeter JSON", "PerfTestPro JSON"],
             horizontal=True
         )
         
+        _upload_label = (
+            "Postman Collection" if collection_format == "Postman Collection"
+            else "PerfTestPro JSON" if collection_format == "PerfTestPro JSON"
+            else "BlazMeter JSON"
+        )
         uploaded_file = st.file_uploader(
-            f"Upload {'Postman Collection' if collection_format == 'Postman Collection' else 'BlazMeter JSON'}", 
+            f"Upload {_upload_label}", 
             type=["json"]
         )
         
@@ -827,8 +880,9 @@ def main():
                             "body": body_dict
                         }
                         imported_apis.append(api)
+                elif collection_format == "PerfTestPro JSON":
+                    imported_apis = parse_perftestpro_json(collection)
                 else:  # BlazMeter JSON
-                    # Parse BlazMeter JSON format
                     imported_apis = parse_blazmeter_json(collection)
                 
                 # Create a container for buttons
@@ -1236,6 +1290,7 @@ def main():
                     "x": "API Endpoint"
                 },
                 title="Error Rates by API")
+            fig_errors.update_traces(marker_color="#DC3545", marker_line_color="#DC3545")
             fig_errors.update_layout(yaxis_tickformat=',.1f',
                                      yaxis_title="Error Rate (%)",
                                      xaxis_title="API Endpoint",
@@ -1288,11 +1343,11 @@ def main():
             # No successful APIs to display
             st.info("No successful APIs to display in the slowest APIs analysis. All APIs have errors.")
 
-        # Add styling to error messages in dataframes
+        # Add styling to error messages in dataframes (red for errors)
         st.markdown("""
         <style>
         .error-message {
-            color: #6C47E5;
+            color: #DC3545 !important;
         }
         </style>
         """,
@@ -1356,25 +1411,20 @@ def main():
         # Apply final column ordering
         api_metrics_display = api_metrics_display[cols]
         
-        # Create a styling function to highlight response times > 10 seconds (10000ms) in red
-        # and format all time values to 1 decimal place
+        # Create a styling function to highlight response times > 10 seconds (10000ms)
+        # and error messages in red; format all time values to 1 decimal place
         def highlight_high_response_times(val):
-            attr = 'color: #6C47E5; font-weight: bold' 
+            attr = 'color: #6C47E5; font-weight: bold'
+            attr_error_red = 'color: #DC3545; font-weight: bold'
             is_high = pd.Series(False, index=val.index)
             
-            # Apply red color ONLY to Avg Response Time > 10000ms (10 seconds)
             if 'Avg Response Time' in val.index:
                 is_high['Avg Response Time'] = val['Avg Response Time'] > 10000
-                
-            # Also highlight error messages in red
             if 'Error Message' in val.index:
                 error_msg = val['Error Message']
-                if isinstance(error_msg, str):
-                    is_high['Error Message'] = error_msg != ''
-                else:
-                    is_high['Error Message'] = False
-                
-            return [attr if v else '' for v in is_high]
+                is_high['Error Message'] = isinstance(error_msg, str) and (error_msg or '').strip() != ''
+            # Error Message column: red; Avg Response Time (high): purple
+            return [attr_error_red if (c == 'Error Message' and is_high[c]) else (attr if is_high[c] else '') for c in val.index]
             
         # Apply custom styling function and force float formatting
         styled_df = api_metrics_display[cols].style.apply(highlight_high_response_times, axis=1)
@@ -1394,15 +1444,15 @@ def main():
         # Add styling for dataframes
         st.markdown("""
         <style>
-        /* Styling for error messages */
+        /* Styling for error messages - red for errors */
         .error-message {
-            color: #6C47E5 !important;
+            color: #DC3545 !important;
             font-weight: bold;
         }
         
         /* Make sure the style applies to Streamlit elements */
         .stDataFrame td.error-message {
-            color: #6C47E5 !important;
+            color: #DC3545 !important;
             font-weight: bold;
         }
         
@@ -1488,22 +1538,14 @@ def main():
             # Create a styling function to highlight error messages in red and high response times
             def highlight_errors_and_times(val):
                 attr = 'color: #6C47E5; font-weight: bold'
+                attr_error_red = 'color: #DC3545; font-weight: bold'
                 is_highlighted = pd.Series(False, index=val.index)
-                
-                # Highlight error messages - check if it's a string and not empty
                 if 'Error Message' in val.index:
-                    # Handle error message column - check if it's a non-empty string
                     error_msg = val['Error Message']
-                    if isinstance(error_msg, str):
-                        is_highlighted['Error Message'] = error_msg != ''
-                    else:
-                        is_highlighted['Error Message'] = False
-                
-                # Highlight only Avg Response Time if > 10 seconds
+                    is_highlighted['Error Message'] = isinstance(error_msg, str) and (error_msg or '').strip() != ''
                 if 'Avg Response Time' in val.index:
                     is_highlighted['Avg Response Time'] = val['Avg Response Time'] > 10000
-                
-                return [attr if v else '' for v in is_highlighted]
+                return [attr_error_red if (c == 'Error Message' and is_highlighted[c]) else (attr if is_highlighted[c] else '') for c in val.index]
             
             # Apply custom styling function and force float formatting
             styled_df = error_analysis_display.style.apply(highlight_errors_and_times, axis=1)
