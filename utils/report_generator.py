@@ -70,8 +70,8 @@ class ReportGenerator:
             text=error_rates.values * 100  # Show percentage on bars
         )
         fig.update_traces(
-            marker_color="#6C47E5",
-            marker_line_color="#6C47E5",
+            marker_color="#DC3545",
+            marker_line_color="#DC3545",
             texttemplate='%{text:.1f}%',  # Ensure only 1 decimal place
             textposition='outside'
         )
@@ -346,11 +346,11 @@ class ReportGenerator:
                 # Apply the formatter to the Avg Response Time column
                 formatted_df['Avg Response Time'] = formatted_df['Avg Response Time'].map(format_avg_response_time)
             
-            # Check if 'Error Message' column exists and format it
+            # Check if 'Error Message' column exists and format it (red for errors)
             if 'Error Message' in formatted_df.columns:
                 def format_error_message(value):
                     if pd.notnull(value) and value != '':
-                        return f'<span style="color:#6C47E5; font-weight:bold;">{value}</span>'
+                        return f'<span style="color:#DC3545; font-weight:bold;">{value}</span>'
                     return value
                 
                 # Apply the formatter to error messages
